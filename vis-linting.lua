@@ -1,11 +1,13 @@
 local lunajson = require('lunajson')
 require('table')
+require('lua-vec')
 
 local function collect(cmd)
   local fhandle = assert(io.popen(cmd))
   local output = assert(fhandle:read('*all'))
   local rc = {fhandle:close()}
 
+  local output = output:gsub('compilation terminated%.', '')
   local json_table = lunajson.decode(output)
   return json_table
 end
@@ -20,7 +22,7 @@ local function cmp_pos(candidate, incumbent)
 end
 
 local function lint_gcc(win)
-  local cmd = string.format('g++-10 -Wall -Wextra -fanalyzer -fsanitize=address -fdiagnostics-format=json %s 2>&1', 'test.cpp')
+  local cmd = string.format('g++-10 -Wall -Wextra -fanalyzer -fsanitize=address -fdiagnostics-format=json %s 2>&1', win.file.name)
   local res = collect(cmd)
   local all_instances = {}
   for i, instance in ipairs(res) do
@@ -52,17 +54,15 @@ local function lint_gcc(win)
         if not cmp_pos(POS, range['max']) then range['max'] = POS end
       end
     end
-    -- print(range['min']['line'] .. ' ' .. range['min']['col'])
-    -- print(range['max']['line'] .. ' ' .. range['max']['col'])
-    -- print(kind..": "..msg)
-    -- print("ALLINSTANCES IS")
-    -- require('pl.pretty').dump(all_instances)
     table.insert(all_instances, { ['range'] = range, ['kind'] = kind, ['msg'] = msg })
   end
-  return all_instances
+  RET = Vec:new()
+  for _, instance in ipairs(all_instances) do RET:append(instance) end
+  RET:sort(function(a, b)
+    return cmp_pos(a['range']['min'], b['range']['min'])
+  end)
+  return RET
 end
-
-lint_gcc(3)
 
 M = { ['cpp'] = lint_gcc }
 
