@@ -62,6 +62,12 @@ local function min_stl(win)
   if win.file.name ~= nil then
     stl = stl .. win.file.name
   end
+  if win.file.modified then
+    stl = stl .. ' (modified)'
+  end
+  if vis.recording then
+    stl = stl .. ' (recording)'
+  end
   win:status(stl)
 end
 
